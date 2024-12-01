@@ -12,6 +12,8 @@ from app.core.config import settings
 
 from app.routers import router as main_router
 
+from app.core.database.db_helper import create_tables
+
 logger = setup_logger(__name__)
 
 
@@ -19,11 +21,14 @@ async def main():
     try:
         dp = Dispatcher()
         bot = Bot(
-            token=settings.bot_token,
-            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+            token=settings.bot.token,
+            default=DefaultBotProperties(
+                parse_mode=settings.bot.parse_mode,
+            ),
         )
 
         dp.include_router(main_router)
+
         await dp.start_polling(bot)
 
     except Exception as e:

@@ -155,6 +155,6 @@ class PaymentManager:
 
 
 payment_manager = PaymentManager(
-    terminal_key=settings.pay_terminal_key,
-    secret_key=settings.pay_secret,
+    terminal_key=settings.pay.terminal_key,
+    secret_key=settings.pay.secret,
 )
