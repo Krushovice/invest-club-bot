@@ -10,7 +10,7 @@ from app.core.logging import setup_logger
 
 from app.core.config import settings
 
-from app.commands import router as commands_router
+from app.routers import router as main_router
 
 logger = setup_logger(__name__)
 
@@ -23,7 +23,7 @@ async def main():
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         )
 
-        dp.include_router(commands_router)
+        dp.include_router(main_router)
         await dp.start_polling(bot)
 
     except Exception as e:
