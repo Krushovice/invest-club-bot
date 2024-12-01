@@ -1,11 +1,13 @@
 import aiohttp
 
 
-from .payment_details import generate_token, create_token
+from .tools import generate_token, create_token
 
-from core.config import Settings
+from core.config import settings
 
-settings = Settings()
+from core.logging import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class PaymentManager:
@@ -31,25 +33,46 @@ class PaymentManager:
                 "QR": "true",
             },
             "Description": description,
-            "Receipt": receipt,
         }
 
         token = generate_token(
             data=data,
             password=self.secret_key,
         )
+
         data["Token"] = token
+        data["Receipt"] = receipt
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(
-                self.api_url + "Init",
-                json=data,
-                ssl=False,
-            ) as response:
-                result = await response.json()
-                if result["Success"]:
-                    return result
+            try:
+                async with session.post(
+                    self.api_url + "Init",
+                    json=data,
+                    ssl=False,
+                ) as response:
+
+                    if response.status != 200:
+                        logger.error(
+                            f"Ошибка в инициализации платежа: {await response.text()}"
+                        )
+                        return None
+                    else:
+                        result = await response.json(
+                            content_type="application/json",
+                        )
+                        if result.get("Success"):
+                            return result
+                        else:
+                            logger.error(f"Ошибка в результате платежа: {result}")
+                            return None
+
+            except aiohttp.ContentTypeError:
+                text = await response.text()
+                logger.error(f"Ошибка обработки JSON: {text}")
                 return None
+
+            except Exception as e:
+                logger.error(e)
 
     async def check_payment_status(self, payment_id):
         token = create_token(str(payment_id))
@@ -132,6 +155,6 @@ class PaymentManager:
 
 
 payment_manager = PaymentManager(
-    terminal_key=settings.pay.tinkoff_terminal_key,
-    secret_key=settings.pay.tinkoff_secret,
+    terminal_key=settings.pay_terminal_key,
+    secret_key=settings.pay_secret,
 )

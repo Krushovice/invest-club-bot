@@ -29,9 +29,9 @@ def get_receipt(price):
         "Items": [
             {
                 "Name": "Подписка на канал",
-                "Price": price * 100,
+                "Price": price,
                 "Quantity": 1.0,
-                "Amount": price * 100,
+                "Amount": price,
                 "PaymentMethod": "full_payment",
                 "PaymentObject": "service",
                 "Tax": "none",
