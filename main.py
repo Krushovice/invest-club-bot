@@ -1,67 +1,105 @@
 import asyncio
-
+import logging
 
 from aiogram import Bot, Dispatcher
 
 from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
 
-from app.core.logging import setup_logger
+from aiohttp import web
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
 from app.core.config import settings
 
 from app.routers import router as main_router
 
-from app.core.database.db_helper import create_tables
 
-logger = setup_logger(__name__)
-
-
-async def main():
-    try:
-        dp = Dispatcher()
-        bot = Bot(
-            token=settings.bot.token,
-            default=DefaultBotProperties(
-                parse_mode=settings.bot.parse_mode,
-            ),
-        )
-
-        dp.include_router(main_router)
-
-        await dp.start_polling(bot)
-
-    except Exception as e:
-        logger.error(e)
-
-
-# Press the green button in the gutter to run the script.
-if __name__ == "__main__":
-    asyncio.run(main())
-
-# webhook example
-
-# from aiohttp import web
-# from aiogram import Bot, Dispatcher
+# async def main():
+#     try:
+#         dp = Dispatcher()
+#         bot = Bot(
+#             token=settings.bot.token,
+#             default=DefaultBotProperties(
+#                 parse_mode=settings.bot.parse_mode,
+#             ),
+#         )
 #
-# API_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
-# WEBHOOK_PATH = "/webhook"
-# WEBHOOK_URL = f"https://your-domain.com{WEBHOOK_PATH}"
+#         dp.include_router(main_router)
 #
-# bot = Bot(token=API_TOKEN)
-# dp = Dispatcher()
+#         await dp.start_polling(bot)
 #
-# # Обработка входящих апдейтов
-# async def handle_update(request: web.Request):
-#     update = await request.json()
-#     await bot.process_update(update)
-#     return web.Response()
+#     except Exception as e:
+#         logger.error(e)
 #
-# app = web.Application()
-# app.router.add_post(WEBHOOK_PATH, handle_update)
-
-# async def set_webhook():
-#     await bot.set_webhook(WEBHOOK_URL)
-# #
+#
+# # Press the green button in the gutter to run the script.
 # if __name__ == "__main__":
-#     web.run_app(app, host="0.0.0.0", port=8443)
+#     asyncio.run(main())
+dp = Dispatcher()
+bot = Bot(
+    token=settings.bot.token,
+    default=DefaultBotProperties(
+        parse_mode=settings.bot.parse_mode,
+    ),
+)
+
+
+# Функция, которая будет вызвана при запуске бота
+async def on_startup() -> None:
+
+    # Устанавливаем вебхук для приема сообщений через заданный URL
+    await bot.set_webhook(f"{settings.web.base_url}/{settings.bot.token}")
+    # Отправляем сообщение администратору о том, что бот был запущен
+    await bot.send_message(chat_id=settings.main.admin_id, text="Бот запущен!")
+
+
+# Функция, которая будет вызвана при остановке бота
+async def on_shutdown() -> None:
+    # Отправляем сообщение администратору о том, что бот был остановлен
+    await bot.send_message(chat_id=settings.main.admin_id, text="Бот остановлен!")
+    # Удаляем вебхук и, при необходимости, очищаем ожидающие обновления
+    await bot.delete_webhook(drop_pending_updates=True)
+    # Закрываем сессию бота, освобождая ресурсы
+    await bot.session.close()
+
+
+def main() -> None:
+
+    # Подключаем маршрутизатор (роутер) для обработки сообщений
+    dp.include_router(main_router)
+
+    # Регистрируем функцию, которая будет вызвана при старте бота
+    dp.startup.register(on_startup)
+
+    # Регистрируем функцию, которая будет вызвана при остановке бота
+    dp.shutdown.register(on_shutdown)
+
+    # Создаем веб-приложение на базе aiohttp
+    app = web.Application()
+
+    # Настраиваем обработчик запросов для работы с вебхуком
+    webhook_requests_handler = SimpleRequestHandler(
+        dispatcher=dp,
+        bot=bot,
+    )
+    # Регистрируем обработчик запросов на определенном пути
+    webhook_requests_handler.register(app, path=f"/{settings.bot.token}")
+
+    # Настраиваем приложение и связываем его с диспетчером и ботом
+    setup_application(app, dp, bot=bot)
+
+    # Запускаем веб-сервер на указанном хосте и порте
+    web.run_app(
+        app,
+        host=settings.web.host,
+        port=settings.web.port,
+    )
+
+
+if __name__ == "__main__":
+    # Настраиваем логирование (информация, предупреждения, ошибки) и выводим их в консоль
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    logger = logging.getLogger(__name__)
+    main()
