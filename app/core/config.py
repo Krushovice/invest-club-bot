@@ -23,13 +23,19 @@ class PaymentConfig(BaseModel):
 
 class AdminConfig(BaseModel):
     admin_id: int
+    channel_id: int
     debug: bool = True
     channel_link: str
 
 
+class ServerConfig(BaseModel):
+    port: int = 5000
+    host: str = "0.0.0.0"
+    base_url: str = "https://bf19-89-110-64-46.ngrok-free.app "
 
 
 class Settings(BaseSettings):
+    web: ServerConfig = ServerConfig()
 
     main: AdminConfig
 
