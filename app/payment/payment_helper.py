@@ -3,9 +3,9 @@ import aiohttp
 
 from .tools import generate_token, create_token
 
-from core.config import settings
+from app.core.config import settings
 
-from core.logging import setup_logger
+from app.core.logging import setup_logger
 
 logger = setup_logger(__name__)
 
