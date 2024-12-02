@@ -6,7 +6,7 @@ from aiohttp.http_exceptions import HttpBadRequest
 from aiogram.exceptions import TelegramBadRequest
 
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, FSInputFile, InlineKeyboardMarkup
+from aiogram.types import Message, FSInputFile
 
 from app.core.logging import setup_logger
 
