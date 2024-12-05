@@ -12,28 +12,6 @@ from app.core.config import settings
 
 from app.routers import router as main_router
 
-
-# async def main():
-#     try:
-#         dp = Dispatcher()
-#         bot = Bot(
-#             token=settings.bot.token,
-#             default=DefaultBotProperties(
-#                 parse_mode=settings.bot.parse_mode,
-#             ),
-#         )
-#
-#         dp.include_router(main_router)
-#
-#         await dp.start_polling(bot)
-#
-#     except Exception as e:
-#         logger.error(e)
-#
-#
-# # Press the green button in the gutter to run the script.
-# if __name__ == "__main__":
-#     asyncio.run(main())
 dp = Dispatcher()
 bot = Bot(
     token=settings.bot.token,
@@ -47,7 +25,9 @@ bot = Bot(
 async def on_startup() -> None:
 
     # Устанавливаем вебхук для приема сообщений через заданный URL
-    await bot.set_webhook(f"{settings.web.base_url}/{settings.bot.token}")
+    await bot.set_webhook(
+        f"{settings.web.base_url}/webhook",
+    )
     # Отправляем сообщение администратору о том, что бот был запущен
     await bot.send_message(chat_id=settings.main.admin_id, text="Бот запущен!")
 
@@ -82,7 +62,7 @@ def main() -> None:
         bot=bot,
     )
     # Регистрируем обработчик запросов на определенном пути
-    webhook_requests_handler.register(app, path=f"/{settings.bot.token}")
+    webhook_requests_handler.register(app, path="/webhook}")
 
     # Настраиваем приложение и связываем его с диспетчером и ботом
     setup_application(app, dp, bot=bot)

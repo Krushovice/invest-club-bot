@@ -29,13 +29,14 @@ class AdminConfig(BaseModel):
 
 
 class ServerConfig(BaseModel):
-    port: int = 5000
-    host: str = "0.0.0.0"
-    base_url: str = "https://bf19-89-110-64-46.ngrok-free.app "
+    port: int = 8080
+    host: str
+    base_url: str
+    secret: str
 
 
 class Settings(BaseSettings):
-    web: ServerConfig = ServerConfig()
+    web: ServerConfig
 
     main: AdminConfig
 
