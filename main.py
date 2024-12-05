@@ -62,7 +62,7 @@ def main() -> None:
         bot=bot,
     )
     # Регистрируем обработчик запросов на определенном пути
-    webhook_requests_handler.register(app, path="/webhook}")
+    webhook_requests_handler.register(app, path="/webhook")
 
     # Настраиваем приложение и связываем его с диспетчером и ботом
     setup_application(app, dp, bot=bot)
