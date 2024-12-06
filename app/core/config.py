@@ -28,15 +28,18 @@ class AdminConfig(BaseModel):
     channel_link: str
 
 
-class ServerConfig(BaseModel):
-    port: int = 8080
+class WebConfig(BaseModel):
+    port: int
     host: str
     base_url: str
+    pay_path: str
+    main_path: str
+
     secret: str
 
 
 class Settings(BaseSettings):
-    web: ServerConfig
+    web: WebConfig
 
     main: AdminConfig
 
