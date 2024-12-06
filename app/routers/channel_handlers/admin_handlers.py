@@ -11,4 +11,4 @@ async def handle_new_member(call: CallbackQuery, name: str):
         f"Здесь вы найдёте всю актуальную информацию по сделкам и стратегии следования ✍ "
     )
 
-    await call.message.new_chat_members(chat_id=settings.main.admin_id, text=msg)
+    # await call.message.new_chat_members(chat_id=settings.main.admin_id, text=msg)

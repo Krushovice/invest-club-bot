@@ -6,38 +6,37 @@ from aiohttp import web
 
 
 # Обработчик для получения уведомлений о статусе платежа
-async def handle_payment_notification(bot: Bot, request):
+async def handle_payment_notification(request, bot):
     try:
+        # Лог входящего запроса
+        logging.info(f"Handling request: {await request.text()}")
+
+        # Парсим JSON
         data = await request.json()
+        logging.info(f"Received data: {data}")
 
-        # Проверяем статус платежа и идентификатор
-        if data.get("Success"):
-            payment_id = data.get("PaymentId")
-            status = data.get("Status")
-            order_id = data.get(
-                "OrderId"
-            )  # Используем OrderId как идентификатор пользователя (или другое значение)
+        # Проверяем обязательные поля
+        if not all(
+            key in data for key in ["Success", "PaymentId", "Status", "OrderId"]
+        ):
+            logging.error("Invalid request: Missing required fields")
+            return web.json_response({"status": "invalid request"}, status=400)
 
-            # Логика обработки успешного платежа
+        # Основная логика
+        if data["Success"]:
+            payment_id = data["PaymentId"]
+            status = data["Status"]
+            order_id = data["OrderId"]
+
             if status == "CONFIRMED":
-                # Отправляем пользователю уведомление об успешной оплате
-                await bot.send_message(
-                    order_id,
-                    "Ваш платеж успешно прошел! Мы начинаем обработку вашего заказа.",
-                )
-                # Логика предоставления услуги пользователю (например, активировать услугу)
-                # Например, создать запись о заказе, обновить его статус и т.д.
-
-            else:
-                # Платеж не прошел, отправляем уведомление пользователю
-                await bot.send_message(
-                    order_id, "Оплата не прошла. Пожалуйста, попробуйте снова."
-                )
-
-            return web.json_response({"status": "ok"})
+                # Пример: Отправка сообщения через bot
+                await bot.send_message(chat_id=order_id, text="Оплата прошла успешно!")
+                logging.info(f"Payment confirmed for order {order_id}")
+                return web.json_response({"status": "ok"})
         else:
-            # Платеж не был успешным
+            logging.warning("Payment failed")
             return web.json_response({"status": "failed"})
+
     except Exception as e:
-        logging.error(f"Error handling payment notification: {e}")
-        return web.json_response({"status": "error"})
+        logging.error(f"Error processing request: {e}", exc_info=True)
+        return web.json_response({"status": "error"}, status=500)
