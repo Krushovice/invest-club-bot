@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import functools
 
 from aiogram import Bot, Dispatcher
 
@@ -11,6 +12,8 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 from app.core.config import settings
 
 from app.routers import router as main_router
+
+from app.utils import handle_payment_notification
 
 dp = Dispatcher()
 bot = Bot(
@@ -26,7 +29,7 @@ async def on_startup() -> None:
 
     # Устанавливаем вебхук для приема сообщений через заданный URL
     await bot.set_webhook(
-        f"{settings.web.base_url}/webhook",
+        f"{settings.web.base_url}{settings.web.main_path}",
     )
     # Отправляем сообщение администратору о том, что бот был запущен
     await bot.send_message(chat_id=settings.main.admin_id, text="Бот запущен!")
@@ -56,13 +59,26 @@ def main() -> None:
     # Создаем веб-приложение на базе aiohttp
     app = web.Application()
 
+    # Устанавливаем обработчик платежей
+    partial_handler = functools.partial(
+        handle_payment_notification,
+        bot=bot,
+    )
+    app.router.add_post(
+        f"{settings.web.pay_path}",
+        handler=partial_handler,
+    )
+
     # Настраиваем обработчик запросов для работы с вебхуком
     webhook_requests_handler = SimpleRequestHandler(
         dispatcher=dp,
         bot=bot,
     )
     # Регистрируем обработчик запросов на определенном пути
-    webhook_requests_handler.register(app, path="/webhook")
+    webhook_requests_handler.register(
+        app,
+        path=f"{settings.web.main_path}",
+    )
 
     # Настраиваем приложение и связываем его с диспетчером и ботом
     setup_application(app, dp, bot=bot)
