@@ -1,12 +1,15 @@
 import logging
 
 from aiogram import Bot
+from aiogram.types import FSInputFile
 
 from aiohttp import web
 
+image_path = "app/utils/images/image3.JPEG"
+
 
 # Обработчик для получения уведомлений о статусе платежа
-async def handle_payment_notification(request, bot):
+async def handle_payment_notification(request, bot: Bot):
     try:
         # Лог входящего запроса
         logging.info(f"Handling request: {await request.text()}")
@@ -26,12 +29,16 @@ async def handle_payment_notification(request, bot):
         if data["Success"]:
             payment_id = data["PaymentId"]
             status = data["Status"]
-            order_id = data["OrderId"]
+            tg_id = data["DATA"]["tg_id"]
 
             if status == "CONFIRMED":
                 # Пример: Отправка сообщения через bot
-                await bot.send_message(chat_id=order_id, text="Оплата прошла успешно!")
-                logging.info(f"Payment confirmed for order {order_id}")
+                await bot.send_photo(
+                    chat_id=tg_id,
+                    photo=FSInputFile(image_path),
+                    caption="Оплата прошла успешно!",
+                )
+                logging.info(f"Payment №{payment_id} confirmed")
                 return web.json_response({"status": "ok"})
         else:
             logging.warning("Payment failed")

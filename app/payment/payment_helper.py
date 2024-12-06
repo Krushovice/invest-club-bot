@@ -18,6 +18,7 @@ class PaymentManager:
 
     async def init_payment(
         self,
+        tg_id,
         amount,
         order_id,
         description,
@@ -31,6 +32,7 @@ class PaymentManager:
             "PayType": "O",
             "DATA": {
                 "QR": "true",
+                "tg_id": tg_id,
             },
             "Description": description,
         }
