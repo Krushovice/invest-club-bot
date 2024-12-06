@@ -56,6 +56,7 @@ async def command_start_handler(message: Message):
 async def command_pay_handler(message: Message):
     try:
         payment = await payment_manager.init_payment(
+            tg_id=message.from_user.id,
             amount=100000,
             order_id=generate_order_number(),
             description=f"Оплата пользователя № {message.from_user.id}",
