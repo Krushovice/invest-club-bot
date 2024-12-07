@@ -32,13 +32,19 @@ async def on_startup() -> None:
         f"{settings.web.base_url}{settings.web.main_path}",
     )
     # Отправляем сообщение администратору о том, что бот был запущен
-    await bot.send_message(chat_id=settings.main.admin_id, text="Бот запущен!")
+    await bot.send_message(
+        chat_id=settings.main.admin_id,
+        text="Бот запущен!",
+    )
 
 
 # Функция, которая будет вызвана при остановке бота
 async def on_shutdown() -> None:
     # Отправляем сообщение администратору о том, что бот был остановлен
-    await bot.send_message(chat_id=settings.main.admin_id, text="Бот остановлен!")
+    await bot.send_message(
+        chat_id=settings.main.admin_id,
+        text="Бот остановлен!",
+    )
     # Удаляем вебхук и, при необходимости, очищаем ожидающие обновления
     await bot.delete_webhook(drop_pending_updates=True)
     # Закрываем сессию бота, освобождая ресурсы
