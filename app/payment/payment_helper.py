@@ -18,7 +18,6 @@ class PaymentManager:
 
     async def init_payment(
         self,
-        tg_id,
         amount,
         order_id,
         description,
@@ -30,9 +29,9 @@ class PaymentManager:
             "Amount": amount,
             "OrderId": order_id,
             "PayType": "O",
+            "NotificationURL": "https://9229-82-162-122-212.ngrok-free.app/payment_webhook",
             "DATA": {
                 "QR": "true",
-                "tg_id": tg_id,
             },
             "Description": description,
         }
