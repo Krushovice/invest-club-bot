@@ -16,6 +16,8 @@ from app.payment import (
     get_receipt,
 )
 
+from app.utils import register_user
+
 from app.keyboards import pay_kb
 
 
@@ -29,11 +31,9 @@ file_path2 = "app/utils/images/pay_image.jpg"
 @router.message(CommandStart())
 async def command_start_handler(message: Message):
     try:
-        name = message.from_user.first_name
-        last_name = message.from_user.last_name
-
+        user = await register_user(message=message)
         text = (
-            f"Здравствуй, <b>{name}, {last_name}</b>👋, всего один шаг отделяет тебя от присоединения к нашей стратегии следования! "
+            f"Здравствуй, <b>{user.first_name}, {user.last_name}</b>👋, всего один шаг отделяет тебя от присоединения к нашей стратегии следования! "
             f"Для того, чтобы присоединиться к <i>закрытому</i> инвест-клубу 💰,"
             "необходимо оплатить ежемесячную подписку по команде <b>/pay</b>."
         )
