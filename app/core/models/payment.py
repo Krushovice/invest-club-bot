@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import Integer, Date, ForeignKey, func
+from sqlalchemy import Integer, Date, ForeignKey, func, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -10,6 +10,8 @@ class Payment(Base):
     __tablename__ = "payments"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    pay_id: Mapped[int] = mapped_column(BigInteger, unique=True)
 
     created_at: Mapped[datetime] = mapped_column(
         Date,
