@@ -15,7 +15,7 @@ class Payment(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         Date,
-        default=datetime.datetime.today().strftime("%Y-%m-%d"),
+        default=datetime.datetime.today(),
         server_default=func.current_date(),
     )
 
