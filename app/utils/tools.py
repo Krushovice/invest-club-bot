@@ -1,11 +1,14 @@
 import logging
 
+
 from aiogram import Bot
-from aiogram.types import FSInputFile
+from aiogram.types import FSInputFile, Message
 
 from aiohttp import web
 
 from app.core.config import settings
+
+from app.core.database import UserSchema, UserCRUD
 
 from app.keyboards import build_chat_kb
 
@@ -63,3 +66,19 @@ async def handle_payment_notification(request, bot: Bot):
 async def save_user_payment(payment_id: int):
     # сохраняем платеж в базу данных и пробрасываем наверх
     pass
+
+
+async def register_user(message: Message):
+    first_name = message.from_user.first_name
+    last_name = message.from_user.last_name
+    tg_id = message.from_user.id
+    user_data = UserSchema(
+        tg_id=tg_id,
+        first_name=first_name,
+        last_name=last_name,
+    )
+    user_exist = await UserCRUD.get_user_by_tg_id(tg_id)
+    if not user_exist:
+        user = await UserCRUD.create_user(user=user_data)
+        return user
+    return user_exist
