@@ -34,6 +34,8 @@ class User(Base):
         server_default=func.current_date(),
     )
 
+    expired_at: Mapped[datetime] = mapped_column(Date, nullable=True)
+
     is_active: Mapped[bool] = mapped_column(default=False)
 
     payments: Mapped[list["Payment"]] = relationship(
