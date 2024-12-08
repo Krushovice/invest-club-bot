@@ -44,6 +44,27 @@ class BaseOrm:
         return records
 
     @classmethod
+    async def update(
+        cls,
+        session: AsyncSession,
+        pk: int,
+        **kwargs,
+    ):
+
+        query = select(cls.model).filter_by(id=pk)
+
+        result: Result = await session.execute(query)
+
+        record: cls.model | None = result.scalar_one_or_none()
+
+        for key, value in kwargs.items():
+            setattr(record, key, value)
+
+        session.add(record)
+        await session.commit()
+        return record
+
+    @classmethod
     async def delete(cls, session: AsyncSession, pk: int):
         query = select(cls.model).filter_by(id=pk)
         res: Result = await session.execute(query)
