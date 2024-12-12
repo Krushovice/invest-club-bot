@@ -2,6 +2,7 @@ import re
 import uuid
 import hashlib
 import datetime
+import logging
 
 from app.core.logging import setup_logger
 
@@ -12,13 +13,18 @@ settings = Settings()
 logger = setup_logger(__name__)
 
 
-def generate_order_number():
+def generate_order_number(user_id: int, max_length: int = 30):
     # Генерируем UUID (универсальный уникальный идентификатор)
-    order_id = uuid.uuid4()
-    # Преобразуем UUID в строку и убираем дефисы
-    order_number = str(order_id).replace("-", "")
-    # Обрезаем строку до 30 символов, если она слишком длинная
-    order_number = order_number[:30]
+    # Используем только первые 8 символов UUID для краткости
+    order_id = uuid.uuid4().hex[:8]
+    order_number = f"{user_id}_{order_id}"
+
+    # Проверяем, не превышает ли длина max_length
+    if len(order_number) > max_length:
+        # Если превышает, хэшируем длинный идентификатор
+        hash_part = hashlib.sha256(order_number.encode()).hexdigest()[:8]
+        order_number = f"{user_id}_{hash_part}"
+
     return order_number
 
 
@@ -84,3 +90,12 @@ def check_payment_date(data: str) -> bool:
 
 def check_payment(payment) -> bool:
     return True if payment["Status"] == "CONFIRMED" else False
+
+
+def parse_user_id_from_order_id(order_id: str) -> int | None:
+    try:
+        user_id, _ = order_id.split("_", 1)
+        return int(user_id)
+    except ValueError:
+        logging.error(f"Не удалось извлечь user_id из OrderId: {order_id}")
+        return None
