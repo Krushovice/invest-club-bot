@@ -6,6 +6,7 @@ __all__ = (
     "generate_token",
     "get_receipt",
     "generate_order_number",
+    "parse_user_id_from_order_id",
 )
 
 from .payment_helper import payment_manager
@@ -16,4 +17,5 @@ from .tools import (
     generate_token,
     get_receipt,
     generate_order_number,
+    parse_user_id_from_order_id,
 )
