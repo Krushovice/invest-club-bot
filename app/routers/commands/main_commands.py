@@ -16,6 +16,8 @@ from app.payment import (
     get_receipt,
 )
 
+from app.core.database import UserCRUD
+
 from app.utils import register_user
 
 from app.keyboards import pay_kb
@@ -55,17 +57,17 @@ async def command_start_handler(message: Message):
 @router.message(Command("pay", prefix="!/"))
 async def command_pay_handler(message: Message):
     try:
+        user = await UserCRUD.get_user_by_tg_id(message.from_user.id)
         payment = await payment_manager.init_payment(
             amount=100000,
-            order_id=generate_order_number(),
-            description=f"Оплата пользователя № {message.from_user.id}",
+            order_id=generate_order_number(user_id=user.id),
+            description=f"Оплата пользователя № {user.tg_id}",
             receipt=get_receipt(price=100000),
         )
         if payment:
             msg = markdown.text(
                 markdown.hbold(f"💰 Сумма: 1000 руб"),
                 markdown.hitalic("Для оплаты перейдите по ссылке ниже ⬇️"),
-                markdown.hitalic("Как только оплатите, через пару секунд 'Жми✅'"),
                 sep="\n\n",
             )
             await message.answer_photo(
