@@ -7,13 +7,16 @@ from aiogram import Bot
 from aiogram.types import FSInputFile, Message
 
 from aiohttp import web
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
 
 from app.core.database import UserSchema, UserCRUD
 
 from app.keyboards import build_chat_kb
-from core.database import PaymentCRUD
+from core.database import PaymentCRUD, PaymentSchema, UserUpdateSchema
+
+from app.payment import parse_user_id_from_order_id
 
 image_path = "app/utils/images/image3.JPEG"
 ban_image_path = "app/utils/images/ban_image.png"
@@ -56,17 +59,37 @@ async def handle_payment_notification(request, bot: Bot):
         status = data["Status"]
         # если платеж успешен и его еще нет в бд
         if status == "CONFIRMED":
-            payment = await save_user_payment(payment_id=data["PaymentId"])
+            user_id = await save_user_payment(
+                payment_id=data["PaymentId"], order_id=data["OrderId"]
+            )
             logging.info(f"Платеж подтвержден: {data}")
-            if payment:
-                invite_link = await work_with_chat_member(payment=payment, bot=bot)
-                await bot.send_photo(
-                    chat_id=payment.user.tg_id,
-                    photo=FSInputFile(image_path),
-                    caption="Ваш платеж успешно подтвержден! Ссылка на закрытый чат ниже",
-                    reply_markup=build_chat_kb(invite_link=invite_link),
+            if user_id:
+                user = await UserCRUD.get_user(user_id=user_id)
+                has_payments = True if user.payments else False
+
+                invite_link = await work_with_chat_member(
+                    tg_id=user.tg_id,
+                    has_payments=has_payments,
+                    bot=bot,
                 )
-                return web.json_response({"status": "ok"})
+                if invite_link:
+
+                    await bot.send_photo(
+                        chat_id=user.tg_id,
+                        photo=FSInputFile(image_path),
+                        caption="Ваш платеж успешно подтвержден! Ссылка на закрытый чат ниже",
+                        reply_markup=build_chat_kb(
+                            invite_link=settings.main.channel_link
+                        ),
+                    )
+                    return web.json_response({"status": "ok"})
+                else:
+                    await bot.send_photo(
+                        chat_id=user.tg_id,
+                        photo=FSInputFile(image_path),
+                        caption="Ваш платеж успешно подтвержден! Канал: @prostockexchange_trading",
+                    )
+                    return web.json_response({"status": "ok"})
             else:
                 logging.info(f"Платеж {data["PaymentId"]} уже обработан")
                 return web.json_response(
@@ -81,30 +104,47 @@ async def handle_payment_notification(request, bot: Bot):
         return web.json_response({"status": "error"}, status=500)
 
 
-async def save_user_payment(payment_id: int):
-    # сохраняем платеж в базу данных и пробрасываем наверх
-    check_for_exist = await PaymentCRUD.get_payment_by_pay_id(payment_id)
+async def save_user_payment(payment_id: int, order_id: str):
 
-    if check_for_exist:
+    existing_payment = await PaymentCRUD.get_payment(payment_id)
+
+    if existing_payment:
         return None
 
-    payment = await PaymentCRUD.create_payment(payment_id=payment_id)
-    return payment
+    user_id = parse_user_id_from_order_id(order_id)
+
+    try:
+        user = await UserCRUD.get_user(user_id=user_id)
+        updated_user = UserUpdateSchema(tg_id=user.tg_id, is_active=True)
+        await UserCRUD.update_user(user_id=user_id, user=updated_user)
+
+        pay_in = PaymentSchema(
+            pay_id=payment_id,
+            user_id=user_id,
+        )
+        await PaymentCRUD.create_payment(payment=pay_in)
+        return user.id
+
+    except SQLAlchemyError as e:
+        logging.error(e)
+
+    except Exception as e:
+        logging.error(e)
 
 
-async def work_with_chat_member(payment, bot: Bot):
-    if payment.user.payments:
+async def work_with_chat_member(
+    tg_id,
+    bot: Bot,
+    has_payments: bool = False,
+):
+    if has_payments:
         await bot.unban_chat_member(
             chat_id=settings.main.channel_id,
-            user_id=payment.user.tg_id,
+            user_id=tg_id,
             only_if_banned=True,
         )
-    else:
-        chat_link = await bot.create_chat_invite_link(
-            chat_id=settings.main.channel_id,
-            name=f"Инвайт сслыка юзера: {payment.user.tg_id}",
-        )
-        return chat_link.invite_link
+
+    return settings.main.channel_link
 
 
 async def register_user(message: Message):
@@ -116,11 +156,18 @@ async def register_user(message: Message):
         first_name=first_name,
         last_name=last_name,
     )
-    user_exist = await UserCRUD.get_user_by_tg_id(tg_id)
-    if not user_exist:
-        user = await UserCRUD.create_user(user=user_data)
-        return user
-    return user_exist
+    try:
+        user_exist = await UserCRUD.get_user_by_tg_id(tg_id)
+        if not user_exist:
+            user = await UserCRUD.create_user(user=user_data)
+            return user
+        return user_exist
+
+    except SQLAlchemyError as e:
+        logging.error(e)
+
+    except Exception as e:
+        logging.error(e)
 
 
 @async_repeat(interval=24 * 3600)
