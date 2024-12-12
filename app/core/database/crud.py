@@ -14,14 +14,41 @@ class UserCRUD:
 
     @staticmethod
     @connection
-    async def create_user(user: UserSchema, session: AsyncSession) -> User:
+    async def create_user(
+        user: UserSchema,
+        session: AsyncSession,
+    ) -> User:
         user = await UserOrm.add_user(user_data=user.model_dump(), session=session)
         return user
 
     @staticmethod
     @connection
-    async def get_user_by_tg_id(tg_id: int, session: AsyncSession) -> User:
-        user = await UserOrm.find_one_or_none(tg_id=tg_id, session=session)
+    async def get_user(
+        user_id: int,
+        session: AsyncSession,
+    ) -> User:
+        user = await UserOrm.get_user(user_id=user_id, session=session)
+        return user
+
+    @staticmethod
+    @connection
+    async def get_user_by_tg_id(
+        tg_id: int,
+        session: AsyncSession,
+    ) -> User:
+        user = await UserOrm.get_user_by_tg_id(tg_id=tg_id, session=session)
+        return user
+
+    @staticmethod
+    @connection
+    async def get_user_by_id_with_sub_model(
+        tg_id: int,
+        session: AsyncSession,
+    ) -> User:
+        user = await UserOrm.get_user_with_related_model_by_tg_id(
+            tg_id=tg_id,
+            session=session,
+        )
         return user
 
     @staticmethod
@@ -52,22 +79,44 @@ class PaymentCRUD:
 
     @staticmethod
     @connection
-    async def create_payment(session: AsyncSession, payment: PaymentSchema) -> Payment:
+    async def create_payment(payment: PaymentSchema, session: AsyncSession) -> Payment:
         payment = await PaymentOrm.add_payment(
-            session=session, pay_data=payment.model_dump()
-        )
-        return payment
-
-    @staticmethod
-    @connection
-    async def get_payment_by_pay_id(session: AsyncSession, payment_id: int) -> Payment:
-        payment = await PaymentOrm.find_one_or_none(
+            pay_data=payment.model_dump(),
             session=session,
-            pay_id=payment_id,
         )
         return payment
 
     @staticmethod
     @connection
-    async def delete_payment(session: AsyncSession, payment_id: int) -> None:
-        await PaymentOrm.delete(session=session, pk=payment_id)
+    async def get_payment(
+        payment_id: int,
+        session: AsyncSession,
+    ) -> Payment:
+        payment = await PaymentOrm.get_payment(
+            session=session,
+            payment_id=payment_id,
+        )
+        return payment
+
+    @staticmethod
+    @connection
+    async def get_payment_with_sub_model(
+        payment_id: int,
+        session: AsyncSession,
+    ) -> Payment:
+        payment = await PaymentOrm.get_payment_with_related_model(
+            payment_id=payment_id,
+            session=session,
+        )
+        return payment
+
+    @staticmethod
+    @connection
+    async def delete_payment(
+        payment_id: int,
+        session: AsyncSession,
+    ) -> None:
+        await PaymentOrm.delete(
+            pk=payment_id,
+            session=session,
+        )
