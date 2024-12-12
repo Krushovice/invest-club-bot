@@ -2,9 +2,10 @@ import asyncio
 import logging
 import functools
 
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, F
 
 from aiogram.client.default import DefaultBotProperties
+
 
 from aiohttp import web
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
@@ -30,6 +31,18 @@ async def on_startup() -> None:
     # Устанавливаем вебхук для приема сообщений через заданный URL
     await bot.set_webhook(
         f"{settings.web.base_url}{settings.web.main_path}",
+        allowed_updates=[
+            "message",
+            "edited_message",
+            "channel_post",
+            "edited_channel_post",
+            "inline_query",
+            "chosen_inline_result",
+            "callback_query",
+            "chat_member",
+            "my_chat_member",
+            "chat_join_request",
+        ],
     )
     # Отправляем сообщение администратору о том, что бот был запущен
     await bot.send_message(
