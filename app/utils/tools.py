@@ -4,9 +4,12 @@ import asyncio
 import datetime
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import FSInputFile, Message
 
 from aiohttp import web
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
@@ -20,23 +23,6 @@ from app.payment import parse_user_id_from_order_id
 
 image_path = "app/utils/images/image3.JPEG"
 ban_image_path = "app/utils/images/ban_image.png"
-
-
-def async_repeat(interval):
-    """
-    Декоратор для асинхронного вызова функции с заданным интервалом.
-    """
-
-    def decorator(func):
-        @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            while True:
-                await func(*args, **kwargs)
-                await asyncio.sleep(interval)  # Ожидание заданного интервала
-
-        return wrapper
-
-    return decorator
 
 
 # Обработчик для получения уведомлений о статусе платежа
@@ -111,25 +97,32 @@ async def save_user_payment(payment_id: int, order_id: str):
     if existing_payment:
         return None
 
-    user_id = parse_user_id_from_order_id(order_id)
+    else:
+        user_id = parse_user_id_from_order_id(order_id)
 
-    try:
-        user = await UserCRUD.get_user(user_id=user_id)
-        updated_user = UserUpdateSchema(tg_id=user.tg_id, is_active=True)
-        await UserCRUD.update_user(user_id=user_id, user=updated_user)
+        try:
+            user = await UserCRUD.get_user(user_id=user_id)
+            today = datetime.date.today()
+            expired_date = today + datetime.timedelta(days=31)
+            updated_user = UserUpdateSchema(
+                tg_id=user.tg_id,
+                is_active=True,
+                expired_at=expired_date,
+            )
+            await UserCRUD.update_user(user_id=user_id, user=updated_user)
 
-        pay_in = PaymentSchema(
-            pay_id=payment_id,
-            user_id=user_id,
-        )
-        await PaymentCRUD.create_payment(payment=pay_in)
-        return user.id
+            pay_in = PaymentSchema(
+                pay_id=payment_id,
+                user_id=user_id,
+            )
+            await PaymentCRUD.create_payment(payment=pay_in)
+            return user.id
 
-    except SQLAlchemyError as e:
-        logging.error(e)
+        except SQLAlchemyError as e:
+            logging.error(e)
 
-    except Exception as e:
-        logging.error(e)
+        except Exception as e:
+            logging.error(e)
 
 
 async def work_with_chat_member(
@@ -170,20 +163,66 @@ async def register_user(message: Message):
         logging.error(e)
 
 
-@async_repeat(interval=24 * 3600)
 async def check_user_subs(bot: Bot):
     users = await UserCRUD.get_users()
     today = datetime.date.today()
+    print(users)
     for user in users:
-        if user.expired_at < today and not user.is_active:
-            await bot.ban_chat_member(
-                chat_id=settings.main.channel_id,
-                user_id=user.tg_id,
-                revoke_messages=True,
-            )
-            await bot.send_photo(
+        if not user.is_active or user.expired_at < today:
+            print("АГА!!!")
+            try:
+                await bot.ban_chat_member(
+                    chat_id=int(settings.main.channel_id),
+                    user_id=user.tg_id,
+                    revoke_messages=True,
+                )
+                await bot.send_photo(
+                    chat_id=user.tg_id,
+                    photo=FSInputFile(path=ban_image_path),
+                    caption=f"Ваша подписка на канал закончилась {user.expired_at}. "
+                    f"Оплатите пожалуйста доступ /pay 💰",
+                )
+            except TelegramBadRequest as e:
+                logging.error(e)
+
+            except Exception as e:
+                logging.error(e)
+
+
+async def reminder_subscribe(bot: Bot):
+    users = await UserCRUD.get_users()
+
+    today = datetime.date.today()
+    for user in users:
+        txt = (
+            f"Ваша подписка на канал закончится {user.expired_at} и доступ будет ограничен. "
+            "Не забудьте пожалуйста про оплату ✍️ /pay"
+        )
+        delta_days = (user.expired_at - today).days
+        print(delta_days)
+        if user.is_active and 0 < delta_days < 3:
+            await bot.send_message(
                 chat_id=user.tg_id,
-                photo=FSInputFile(path=ban_image_path),
-                caption=f"Ваша подписка на канал закончилась {user.expired_at}. "
-                f"Оплатите пожалуйста доступ /pay 💰",
+                text=txt,
             )
+
+
+def schedule_tasks(bot: Bot):
+    scheduler = AsyncIOScheduler()
+
+    scheduler.add_job(
+        check_user_subs,
+        trigger=IntervalTrigger(days=1),
+        kwargs={"bot": bot},
+        id="check_user_subs",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        reminder_subscribe,
+        trigger=IntervalTrigger(days=1),
+        kwargs={"bot": bot},
+        id="reminder_subscribe",
+        replace_existing=True,
+    )
+
+    scheduler.start()
