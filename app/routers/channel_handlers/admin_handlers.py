@@ -57,15 +57,16 @@ async def handle_join_request(event: ChatJoinRequest):
 
 @router.chat_member()
 async def on_user_join(event: ChatMemberUpdated):
-    if (
-        event.chat.id == int(settings.main.channel_id)
-        and event.new_chat_member.status == "member"
-    ):
-        # Отправляем личное сообщение
-        await event.bot.send_message(
-            event.from_user.id,  # ID пользователя, который присоединился
-            "Привет! Добро пожаловать в наш канал!",
-        )
+    # if (
+    #     event.chat.id == int(settings.main.channel_id)
+    #     and event.new_chat_member.status == "member"
+    # ):
+    #     # Отправляем личное сообщение
+    #     await event.bot.send_message(
+    #         event.from_user.id,  # ID пользователя, который присоединился
+    #         "Привет! Добро пожаловать в наш канал!",
+    #     )
+    pass
 
 
 @router.chat_member()

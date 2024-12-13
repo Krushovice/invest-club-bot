@@ -2,19 +2,27 @@ import asyncio
 import logging
 import functools
 
-from aiogram import Bot, Dispatcher, F
+from aiogram import Bot, Dispatcher
 
 from aiogram.client.default import DefaultBotProperties
 
 
 from aiohttp import web
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiogram.webhook.aiohttp_server import (
+    SimpleRequestHandler,
+    setup_application,
+)
+
 
 from app.core.config import settings
 
 from app.routers import router as main_router
 
-from app.utils import handle_payment_notification
+from app.utils import (
+    handle_payment_notification,
+    schedule_tasks,
+)
+
 
 dp = Dispatcher()
 bot = Bot(
@@ -44,6 +52,8 @@ async def on_startup() -> None:
             "chat_join_request",
         ],
     )
+    schedule_tasks(bot)
+
     # Отправляем сообщение администратору о том, что бот был запущен
     await bot.send_message(
         chat_id=settings.main.admin_id,
