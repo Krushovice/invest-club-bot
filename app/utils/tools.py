@@ -2,6 +2,7 @@ import logging
 import functools
 import asyncio
 import datetime
+from datetime import timezone
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -17,6 +18,7 @@ from app.core.config import settings
 from app.core.database import UserSchema, UserCRUD
 
 from app.keyboards import build_chat_kb
+from core import User
 from core.database import PaymentCRUD, PaymentSchema, UserUpdateSchema
 
 from app.payment import parse_user_id_from_order_id
@@ -165,11 +167,8 @@ async def register_user(message: Message):
 
 async def check_user_subs(bot: Bot):
     users = await UserCRUD.get_users()
-    today = datetime.date.today()
-    print(users)
     for user in users:
-        if not user.is_active or user.expired_at < today:
-            print("АГА!!!")
+        if not check_for_legal_user(user):
             try:
                 await bot.ban_chat_member(
                     chat_id=int(settings.main.channel_id),
@@ -199,7 +198,6 @@ async def reminder_subscribe(bot: Bot):
             "Не забудьте пожалуйста про оплату ✍️ /pay"
         )
         delta_days = (user.expired_at - today).days
-        print(delta_days)
         if user.is_active and 0 < delta_days < 3:
             await bot.send_message(
                 chat_id=user.tg_id,
@@ -208,21 +206,35 @@ async def reminder_subscribe(bot: Bot):
 
 
 def schedule_tasks(bot: Bot):
-    scheduler = AsyncIOScheduler()
+    scheduler = AsyncIOScheduler(timezone="Asia/Vladivostok")
 
     scheduler.add_job(
         check_user_subs,
-        trigger=IntervalTrigger(days=1),
+        trigger="cron",
+        hour=datetime.datetime.now().hour,
+        minute=datetime.datetime.now().minute + 1,
+        start_date=datetime.datetime.now(),
         kwargs={"bot": bot},
         id="check_user_subs",
         replace_existing=True,
     )
     scheduler.add_job(
         reminder_subscribe,
-        trigger=IntervalTrigger(days=1),
+        trigger="cron",
+        hour=datetime.datetime.now().hour,
+        minute=datetime.datetime.now().minute + 1,
+        start_date=datetime.datetime.now(),
         kwargs={"bot": bot},
         id="reminder_subscribe",
         replace_existing=True,
     )
 
     scheduler.start()
+
+
+async def check_for_legal_user(user: User):
+    today = datetime.date.today()
+    if user.chat_member:
+        if not user.is_active or user.expired_at < today:
+            return False
+    return True
