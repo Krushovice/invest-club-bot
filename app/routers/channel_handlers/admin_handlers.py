@@ -32,7 +32,7 @@ async def handle_join_request(event: ChatJoinRequest):
                 chat_id=user_id,
                 text=(
                     "Ваш запрос на вступление в канал одобрен! "
-                    "Ссылка на канал: https://t.me/+FJ3Xv4Lu5EM2ZGUy"
+                    "Быстрый переход: <b>https://t.me/+FJ3Xv4Lu5EM2ZGUy</b>"
                 ),
             )
             logging.info(f"Заявка одобрена для пользователя: {event.from_user.id}")

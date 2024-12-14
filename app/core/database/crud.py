@@ -60,7 +60,9 @@ class UserCRUD:
     @staticmethod
     @connection
     async def update_user(
-        user_id: int, user: UserUpdateSchema, session: AsyncSession
+        user_id: int,
+        user: UserUpdateSchema,
+        session: AsyncSession,
     ) -> User:
         user = await UserOrm.update(
             session=session,
