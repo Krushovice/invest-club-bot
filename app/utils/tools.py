@@ -1,8 +1,6 @@
 import logging
-import functools
-import asyncio
+
 import datetime
-from datetime import timezone
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -10,7 +8,7 @@ from aiogram.types import FSInputFile, Message
 
 from aiohttp import web
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
@@ -18,8 +16,10 @@ from app.core.config import settings
 from app.core.database import UserSchema, UserCRUD
 
 from app.keyboards import build_chat_kb
-from core import User
-from core.database import PaymentCRUD, PaymentSchema, UserUpdateSchema
+
+
+from app.core import User
+from app.core.database import PaymentCRUD, PaymentSchema, UserUpdateSchema
 
 from app.payment import parse_user_id_from_order_id
 
@@ -46,7 +46,9 @@ async def handle_payment_notification(request, bot: Bot):
 
         status = data["Status"]
         # если платеж успешен и его еще нет в бд
-        if status == "CONFIRMED":
+        count = 0
+        if status == "CONFIRMED" and count == 0:
+            count += 1
             user_id = await save_user_payment(
                 payment_id=data["PaymentId"], order_id=data["OrderId"]
             )
@@ -109,9 +111,13 @@ async def save_user_payment(payment_id: int, order_id: str):
             updated_user = UserUpdateSchema(
                 tg_id=user.tg_id,
                 is_active=True,
+                chat_member=True,
                 expired_at=expired_date,
             )
-            await UserCRUD.update_user(user_id=user_id, user=updated_user)
+            await UserCRUD.update_user(
+                user_id=user_id,
+                user=updated_user,
+            )
 
             pay_in = PaymentSchema(
                 pay_id=payment_id,
@@ -232,7 +238,7 @@ def schedule_tasks(bot: Bot):
     scheduler.start()
 
 
-async def check_for_legal_user(user: User):
+def check_for_legal_user(user: User):
     today = datetime.date.today()
     if user.chat_member:
         if not user.is_active or user.expired_at < today:
