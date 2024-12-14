@@ -38,6 +38,8 @@ class User(Base):
 
     is_active: Mapped[bool] = mapped_column(default=False)
 
+    chat_member: Mapped[bool] = mapped_column(default=False, nullable=True)
+
     payments: Mapped[list["Payment"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
