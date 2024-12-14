@@ -55,9 +55,9 @@ async def handle_payment_notification(request, bot: Bot):
             logging.info(f"Платеж подтвержден: {data}")
             if user_id:
                 user = await UserCRUD.get_user(user_id=user_id)
-                has_payments = True if user.payments else False
+                has_payments = True if user.chat_member else False
 
-                invite_link = await work_with_chat_member(
+                invite_link = await check_chat_member(
                     tg_id=user.tg_id,
                     has_payments=has_payments,
                     bot=bot,
@@ -69,7 +69,7 @@ async def handle_payment_notification(request, bot: Bot):
                         photo=FSInputFile(image_path),
                         caption="Ваш платеж успешно подтвержден! Ссылка на закрытый чат ниже",
                         reply_markup=build_chat_kb(
-                            invite_link=settings.main.channel_link
+                            invite_link=invite_link,
                         ),
                     )
                     return web.json_response({"status": "ok"})
@@ -77,7 +77,7 @@ async def handle_payment_notification(request, bot: Bot):
                     await bot.send_photo(
                         chat_id=user.tg_id,
                         photo=FSInputFile(image_path),
-                        caption="Ваш платеж успешно подтвержден! Канал: @prostockexchange_trading",
+                        caption="Ваш платеж успешно подтвержден! Канал: <b>https://t.me/+FJ3Xv4Lu5EM2ZGUy</b>",
                     )
                     return web.json_response({"status": "ok"})
             else:
@@ -115,7 +115,7 @@ async def save_user_payment(payment_id: int, order_id: str):
                 expired_at=expired_date,
             )
             await UserCRUD.update_user(
-                user_id=user_id,
+                user_id=user.id,
                 user=updated_user,
             )
 
@@ -133,17 +133,21 @@ async def save_user_payment(payment_id: int, order_id: str):
             logging.error(e)
 
 
-async def work_with_chat_member(
+async def check_chat_member(
     tg_id,
     bot: Bot,
     has_payments: bool = False,
 ):
     if has_payments:
-        await bot.unban_chat_member(
-            chat_id=settings.main.channel_id,
-            user_id=tg_id,
-            only_if_banned=True,
-        )
+        try:
+            await bot.unban_chat_member(
+                chat_id=settings.main.channel_id,
+                user_id=tg_id,
+                only_if_banned=True,
+            )
+            return None
+        except TelegramBadRequest as e:
+            logging.error(e)
 
     return settings.main.channel_link
 
@@ -174,7 +178,8 @@ async def register_user(message: Message):
 async def check_user_subs(bot: Bot):
     users = await UserCRUD.get_users()
     for user in users:
-        if not check_for_legal_user(user):
+        active = await get_user_subscribe(user)
+        if not active:
             try:
                 await bot.ban_chat_member(
                     chat_id=int(settings.main.channel_id),
@@ -185,7 +190,7 @@ async def check_user_subs(bot: Bot):
                     chat_id=user.tg_id,
                     photo=FSInputFile(path=ban_image_path),
                     caption=f"Ваша подписка на канал закончилась {user.expired_at}. "
-                    f"Оплатите пожалуйста доступ /pay 💰",
+                    f"Оплатите пожалуйста доступ <b>/pay</b> 💰",
                 )
             except TelegramBadRequest as e:
                 logging.error(e)
@@ -238,9 +243,21 @@ def schedule_tasks(bot: Bot):
     scheduler.start()
 
 
-def check_for_legal_user(user: User):
+async def get_user_subscribe(user: User):
     today = datetime.date.today()
-    if user.chat_member:
-        if not user.is_active or user.expired_at < today:
+    if user.expired_at < today and user.chat_member:
+        try:
+            user_in = UserUpdateSchema(
+                tg_id=user.tg_id,
+                is_active=False,
+                chat_member=False,
+            )
+            await UserCRUD.update_user(user_id=user.id, user=user_in)
             return False
-    return True
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        except Exception as e:
+            logging.error(e)
+    else:
+        return True
