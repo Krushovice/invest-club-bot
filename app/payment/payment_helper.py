@@ -29,7 +29,7 @@ class PaymentManager:
             "Amount": amount,
             "OrderId": order_id,
             "PayType": "O",
-            "NotificationURL": "https://9229-82-162-122-212.ngrok-free.app/payment_webhook",
+            "NotificationURL": f"{settings.web.base_url}{settings.web.pay_path}",
             "DATA": {
                 "QR": "true",
             },
