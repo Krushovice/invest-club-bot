@@ -2,6 +2,8 @@ FROM python
 
 # Set the working directory in the container
 WORKDIR /app
+# Установка Poetry
+RUN pip install poetry
 
 # Copy the requirements files to the container
 COPY pyproject.toml poetry.lock ./
