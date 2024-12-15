@@ -14,6 +14,7 @@ class UserSchema(BaseModel):
     tg_id: int
     first_name: str | None = None
     last_name: str | None = None
+    username: str | None = None
     payments: List[PaymentSchema] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
@@ -22,6 +23,7 @@ class UserSchema(BaseModel):
 class UserUpdateSchema(UserSchema):
     first_name: str | None = None
     last_name: str | None = None
+    username: str | None = None
     expired_at: date | None = None
     is_active: bool | None = None
     chat_member: bool | None = None
