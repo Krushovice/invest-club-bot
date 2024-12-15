@@ -12,8 +12,8 @@ class PaymentSchema(BaseModel):
 
 class UserSchema(BaseModel):
     tg_id: int
-    first_name: str
-    last_name: str
+    first_name: str | None = None
+    last_name: str | None = None
     payments: List[PaymentSchema] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
