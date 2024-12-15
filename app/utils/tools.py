@@ -155,11 +155,13 @@ async def check_chat_member(
 async def register_user(message: Message):
     first_name = message.from_user.first_name
     last_name = message.from_user.last_name
+    username = message.from_user.username
     tg_id = message.from_user.id
     user_data = UserSchema(
         tg_id=tg_id,
         first_name=first_name,
         last_name=last_name,
+        username=username,
     )
     try:
         user_exist = await UserCRUD.get_user_by_tg_id(tg_id)
