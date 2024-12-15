@@ -28,6 +28,8 @@ class User(Base):
     first_name: Mapped[str] = mapped_column(String(50))
     last_name: Mapped[str] = mapped_column(String(50), nullable=True)
 
+    username: Mapped[str] = mapped_column(String(50), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         Date,
         default=datetime.datetime.today(),
