@@ -2,7 +2,6 @@ import re
 import uuid
 import hashlib
 import datetime
-import logging
 
 from app.core.logging import setup_logger
 
@@ -97,5 +96,5 @@ def parse_user_id_from_order_id(order_id: str) -> int | None:
         user_id, _ = order_id.split("_", 1)
         return int(user_id)
     except ValueError:
-        logging.error(f"Не удалось извлечь user_id из OrderId: {order_id}")
+        logger.error(f"Не удалось извлечь user_id из OrderId: {order_id}")
         return None

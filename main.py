@@ -1,4 +1,3 @@
-import logging
 import functools
 
 from aiogram import Bot, Dispatcher
@@ -14,6 +13,8 @@ from aiogram.webhook.aiohttp_server import (
 
 
 from app.core.config import settings
+
+from app.core.logging import setup_logger
 
 from app.routers import router as main_router
 
@@ -120,10 +121,13 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # Настраиваем логирование (информация, предупреждения, ошибки) и выводим их в консоль
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-    logger = logging.getLogger(__name__)
-    main()
+
+    logger = setup_logger(__name__)
+    try:
+        main()
+
+    except KeyboardInterrupt:
+        print("Программа завершилась принудительно админом")
+
+    except Exception as e:
+        logger.error(e)

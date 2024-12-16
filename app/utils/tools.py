@@ -23,25 +23,24 @@ from app.core.database import PaymentCRUD, PaymentSchema, UserUpdateSchema
 
 from app.payment import parse_user_id_from_order_id
 
+from app.core.logging import setup_logger
+
 image_path = "app/utils/images/image3.JPEG"
 ban_image_path = "app/utils/images/ban_image.png"
+logger = setup_logger(__name__)
 
 
 # Обработчик для получения уведомлений о статусе платежа
 async def handle_payment_notification(request, bot: Bot):
     try:
 
-        logging.info(f"Получен запрос: {await request.text()}")
-
         data = await request.json()
-
-        logging.info(f"Парсинг JSON успешен: {data}")
 
         # Проверяем наличие обязательных полей
         if not all(
             key in data for key in ["Success", "PaymentId", "Status", "OrderId"]
         ):
-            logging.error("Отсутствуют обязательные поля в запросе")
+            logger.error("Отсутствуют обязательные поля в запросе")
             return web.json_response({"status": "missing required fields"}, status=400)
 
         status = data["Status"]
@@ -52,7 +51,7 @@ async def handle_payment_notification(request, bot: Bot):
             user_id = await save_user_payment(
                 payment_id=data["PaymentId"], order_id=data["OrderId"]
             )
-            logging.info(f"Платеж подтвержден: {data}")
+
             if user_id:
                 user = await UserCRUD.get_user(user_id=user_id)
                 has_payments = True if user.chat_member else False
@@ -81,7 +80,7 @@ async def handle_payment_notification(request, bot: Bot):
                     )
                     return web.json_response({"status": "ok"})
             else:
-                logging.info(f"Платеж {data["PaymentId"]} уже обработан")
+
                 return web.json_response(
                     {"status": "ok", "text": "Платеж уже обработан"}
                 )
@@ -90,7 +89,7 @@ async def handle_payment_notification(request, bot: Bot):
             return web.json_response({"status": "unhandled status"})
 
     except Exception as e:
-        logging.error(f"Ошибка в обработке вебхука: {e}", exc_info=True)
+        logger.error(f"Ошибка в обработке вебхука: {e}", exc_info=True)
         return web.json_response({"status": "error"}, status=500)
 
 
@@ -127,10 +126,10 @@ async def save_user_payment(payment_id: int, order_id: str):
             return user.id
 
         except SQLAlchemyError as e:
-            logging.error(e)
+            logger.error(e)
 
         except Exception as e:
-            logging.error(e)
+            logger.error(e)
 
 
 async def check_chat_member(
@@ -147,7 +146,7 @@ async def check_chat_member(
             )
             return None
         except TelegramBadRequest as e:
-            logging.error(e)
+            logger.error(e)
 
     return settings.main.channel_link
 
@@ -171,10 +170,10 @@ async def register_user(message: Message):
         return user_exist
 
     except SQLAlchemyError as e:
-        logging.error(e)
+        logger.error(e)
 
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
 
 
 async def check_user_subs(bot: Bot):
@@ -195,10 +194,10 @@ async def check_user_subs(bot: Bot):
                     f"Оплатите пожалуйста доступ <b>/pay</b> 💰",
                 )
             except TelegramBadRequest as e:
-                logging.error(e)
+                logger.error(e)
 
             except Exception as e:
-                logging.error(e)
+                logger.error(e)
 
 
 async def reminder_subscribe(bot: Bot):
@@ -257,9 +256,9 @@ async def get_user_subscribe(user: User):
             await UserCRUD.update_user(user_id=user.id, user=user_in)
             return False
         except SQLAlchemyError as e:
-            logging.error(e)
+            logger.error(e)
 
         except Exception as e:
-            logging.error(e)
+            logger.error(e)
     else:
         return True

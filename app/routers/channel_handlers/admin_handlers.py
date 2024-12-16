@@ -11,7 +11,10 @@ from app.core.config import settings
 
 from app.core.database import UserCRUD
 
+from app.core.logging import setup_logger
+
 router = Router(name=__name__)
+logger = setup_logger(__name__)
 
 
 @router.callback_query(ChatCbData.filter(F.action == ChatActions.join))
@@ -35,7 +38,6 @@ async def handle_join_request(event: ChatJoinRequest):
                     "Быстрый переход: <b>https://t.me/+FJ3Xv4Lu5EM2ZGUy</b>"
                 ),
             )
-            logging.info(f"Заявка одобрена для пользователя: {event.from_user.id}")
 
         else:
             await event.decline()
@@ -46,13 +48,13 @@ async def handle_join_request(event: ChatJoinRequest):
             )
 
     except TelegramBadRequest as e:
-        logging.error(e)
+        logger.error(e)
 
     except SQLAlchemyError as e:
-        logging.error(e)
+        logger.error(e)
 
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
 
 
 @router.chat_member()
