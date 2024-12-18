@@ -60,10 +60,10 @@ async def command_pay_handler(message: Message):
     try:
         user = await UserCRUD.get_user_by_tg_id(message.from_user.id)
         payment = await payment_manager.init_payment(
-            amount=100000,
+            amount=1000,
             order_id=generate_order_number(user_id=user.id),
             description=f"Оплата пользователя № {user.tg_id}",
-            receipt=get_receipt(price=100000),
+            receipt=get_receipt(price=1000),
         )
         if payment:
             msg = markdown.text(
