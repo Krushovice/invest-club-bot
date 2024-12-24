@@ -17,4 +17,3 @@ router = Router(name=__name__)
 async def handle_back_button(call: CallbackQuery):
     await call.answer()
     await command_start_handler(message=call.message)
-    await handle_new_member(call, name=call.message.from_user.first_name)
