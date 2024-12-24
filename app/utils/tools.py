@@ -33,62 +33,73 @@ logger = setup_logger(__name__)
 # Обработчик для получения уведомлений о статусе платежа
 async def handle_payment_notification(request, bot: Bot):
     try:
-
+        # Получаем JSON из запроса
         data = await request.json()
+        logger.info(f"Получены данные: {data}")
 
         # Проверяем наличие обязательных полей
-        if not all(
-            key in data for key in ["Success", "PaymentId", "Status", "OrderId"]
-        ):
+        required_fields = ["Success", "PaymentId", "Status", "OrderId"]
+        if not all(key in data for key in required_fields):
             logger.error("Отсутствуют обязательные поля в запросе")
-            return web.json_response({"status": "missing required fields"}, status=400)
+            return web.json_response(
+                {"status": "missing required fields"},
+                status=400,
+            )
 
+        # Извлекаем статус
         status = data["Status"]
-        # если платеж успешен и его еще нет в бд
-        count = 0
-        if status == "CONFIRMED" and count == 0:
-            count += 1
+        logger.info(f"Обработка платежа со статусом: {status}")
+
+        # Проверка успешного платежа
+        if status == "CONFIRMED":
+            # Сохраняем платеж и получаем ID пользователя
             user_id = await save_user_payment(
-                payment_id=data["PaymentId"], order_id=data["OrderId"]
+                payment_id=data["PaymentId"],
+                order_id=data["OrderId"],
             )
 
             if user_id:
+                # Получаем данные пользователя
                 user = await UserCRUD.get_user(user_id=user_id)
-                has_payments = True if user.chat_member else False
-
-                invite_link = await check_chat_member(
-                    tg_id=user.tg_id,
-                    has_payments=has_payments,
-                    bot=bot,
-                )
-                if invite_link:
-
-                    await bot.send_photo(
-                        chat_id=user.tg_id,
-                        photo=FSInputFile(image_path),
-                        caption="Ваш платеж успешно подтвержден! Ссылка на закрытый чат ниже",
-                        reply_markup=build_chat_kb(
-                            invite_link=invite_link,
-                        ),
+                if not user:
+                    logger.error(f"Пользователь с ID {user_id} не найден")
+                    return web.json_response(
+                        {"status": "error", "message": "user not found"},
+                        status=404,
                     )
-                    return web.json_response({"status": "ok"})
+
+                chat_member = user.chat_member is True
+                invite_link = settings.main.channel_link
+
+                if chat_member:
+                    # Если пользователь уже в чате, разбаниваем
+                    await unban_old_user(
+                        bot=bot,
+                        channel_id=int(settings.main.channel_id),
+                        user_id=user.tg_id,
+                    )
                 else:
+                    # Если пользователь новый, отправляем сообщение с приглашением
                     await bot.send_photo(
                         chat_id=user.tg_id,
                         photo=FSInputFile(image_path),
-                        caption="Ваш платеж успешно подтвержден! Канал: <b>https://t.me/+FJ3Xv4Lu5EM2ZGUy</b>",
+                        caption="Ваш платеж успешно подтвержден! Ссылка на закрытый чат ниже:",
+                        reply_markup=build_chat_kb(invite_link=invite_link),
                     )
-                    return web.json_response({"status": "ok"})
-            else:
 
+                return web.json_response({"status": "ok"})
+            else:
+                logger.warning("Платеж уже обработан")
                 return web.json_response(
                     {"status": "ok", "text": "Платеж уже обработан"}
                 )
-        else:
-            logging.warning(f"Необработанный статус платежа: {status}")
-            return web.json_response({"status": "unhandled status"})
+
+        # Необработанный статус платежа
+        logger.warning(f"Необработанный статус платежа: {status}")
+        return web.json_response({"status": "unhandled status"})
 
     except Exception as e:
+        # Логирование ошибок
         logger.error(f"Ошибка в обработке вебхука: {e}", exc_info=True)
         return web.json_response({"status": "error"}, status=500)
 
@@ -132,25 +143,6 @@ async def save_user_payment(payment_id: int, order_id: str):
             logger.error(e)
 
 
-async def check_chat_member(
-    tg_id,
-    bot: Bot,
-    has_payments: bool = False,
-):
-    if has_payments:
-        try:
-            await bot.unban_chat_member(
-                chat_id=settings.main.channel_id,
-                user_id=tg_id,
-                only_if_banned=True,
-            )
-            return None
-        except TelegramBadRequest as e:
-            logger.error(e)
-
-    return settings.main.channel_link
-
-
 async def register_user(message: Message):
     first_name = message.from_user.first_name
     last_name = message.from_user.last_name
@@ -163,11 +155,10 @@ async def register_user(message: Message):
         username=username,
     )
     try:
-        user_exist = await UserCRUD.get_user_by_tg_id(tg_id)
-        if not user_exist:
+        user = await UserCRUD.get_user_by_tg_id(tg_id)
+        if not user:
             user = await UserCRUD.create_user(user=user_data)
-            return user
-        return user_exist
+        return user
 
     except SQLAlchemyError as e:
         logger.error(e)
@@ -209,12 +200,13 @@ async def reminder_subscribe(bot: Bot):
             f"Ваша подписка на канал закончится {user.expired_at} и доступ будет ограничен. "
             "Не забудьте пожалуйста про оплату ✍️ /pay"
         )
-        delta_days = (user.expired_at - today).days
-        if user.is_active and 0 < delta_days < 3:
-            await bot.send_message(
-                chat_id=user.tg_id,
-                text=txt,
-            )
+        if user.is_active:
+            delta_days = (user.expired_at - today).days
+            if 0 < delta_days < 3:
+                await bot.send_message(
+                    chat_id=user.tg_id,
+                    text=txt,
+                )
 
 
 def schedule_tasks(bot: Bot):
@@ -246,19 +238,58 @@ def schedule_tasks(bot: Bot):
 
 async def get_user_subscribe(user: User):
     today = datetime.date.today()
-    if user.expired_at < today and user.chat_member:
-        try:
-            user_in = UserUpdateSchema(
-                tg_id=user.tg_id,
-                is_active=False,
-                chat_member=False,
-            )
-            await UserCRUD.update_user(user_id=user.id, user=user_in)
-            return False
-        except SQLAlchemyError as e:
-            logger.error(e)
+    if user.is_active:
+        if user.expired_at < today:
+            try:
+                user_in = UserUpdateSchema(
+                    tg_id=user.tg_id,
+                    is_active=False,
+                    chat_member=False,
+                )
+                await UserCRUD.update_user(user_id=user.id, user=user_in)
+                return False
+            except SQLAlchemyError as e:
+                logger.error(e)
 
-        except Exception as e:
-            logger.error(e)
-    else:
-        return True
+            except Exception as e:
+                logger.error(e)
+        else:
+            return True
+
+
+async def unban_old_user(
+    bot: Bot,
+    channel_id: int,
+    user_id: int,
+):
+    try:
+        # Снимаем бан
+        status = await bot.unban_chat_member(
+            chat_id=channel_id,
+            user_id=user_id,
+            only_if_banned=True,
+        )
+        invite_link = settings.main.channel_link
+        # Проверяем статус после снятия бана
+        member_after = await bot.get_chat_member(
+            chat_id=channel_id,
+            user_id=user_id,
+        )
+        if status and member_after.status == "left":
+            print("Пользователь разбанен!")
+            await bot.send_photo(
+                chat_id=user_id,
+                photo=FSInputFile(image_path),
+                caption=f"Ваш платеж успешно подтвержден! Канал: {invite_link}",
+            )
+            return web.json_response({"status": "ok"})
+
+        else:
+            print("Функция работает неверно")
+            return False
+
+    except TelegramBadRequest as e:
+        logger.error(e)
+
+    except Exception as e:
+        logger.error(e)
