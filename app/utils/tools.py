@@ -49,9 +49,10 @@ async def handle_payment_notification(request, bot: Bot):
         # Извлекаем статус
         status = data["Status"]
         logger.info(f"Обработка платежа со статусом: {status}")
+        count = 0
 
         # Проверка успешного платежа
-        if status == "CONFIRMED":
+        if status == "CONFIRMED" and count == 0:
             # Сохраняем платеж и получаем ID пользователя
             user_id = await save_user_payment(
                 payment_id=data["PaymentId"],
