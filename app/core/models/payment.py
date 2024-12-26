@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import Integer, Date, ForeignKey, func, BigInteger
+from sqlalchemy import Integer, Date, ForeignKey, func, BigInteger, text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -17,6 +17,12 @@ class Payment(Base):
         Date,
         default=datetime.datetime.today(),
         server_default=func.current_date(),
+    )
+
+    is_successful: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
     )
 
     user_id: Mapped[int] = mapped_column(
