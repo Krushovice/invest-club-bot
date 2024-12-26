@@ -21,7 +21,7 @@ from app.core.database import UserCRUD
 from app.utils import register_user
 
 from app.keyboards import pay_kb
-
+from core.database import PaymentCRUD, PaymentSchema
 
 router = Router(name=__name__)
 logger = setup_logger(__name__)
@@ -59,13 +59,22 @@ async def command_start_handler(message: Message):
 async def command_pay_handler(message: Message):
     try:
         user = await UserCRUD.get_user_by_tg_id(message.from_user.id)
+        if not user:
+            user = await register_user(message=message)
+
         payment = await payment_manager.init_payment(
             amount=100000,
-            order_id=generate_order_number(user_id=user.id),
+            order_id=generate_order_number(),
             description=f"Оплата пользователя № {user.tg_id}",
             receipt=get_receipt(price=100000),
         )
+
         if payment:
+            new_pay = PaymentSchema(
+                pay_id=payment.id,
+                user_id=user.id,
+            )
+            await PaymentCRUD.create_payment(payment=new_pay)
             msg = markdown.text(
                 markdown.hbold(f"💰 Сумма: 1000 руб"),
                 markdown.hitalic("Для оплаты перейдите по ссылке ниже ⬇️"),

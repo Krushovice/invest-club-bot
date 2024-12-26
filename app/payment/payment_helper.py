@@ -129,7 +129,7 @@ class PaymentManager:
                 ssl=False,
             ) as response:
                 result = await response.json()
-                if result["Sucess"]:
+                if result["Success"]:
                     return result["Data"]
                 return None
 
