@@ -6,7 +6,7 @@ from .db import connection
 
 from .base_classes import UserOrm, PaymentOrm
 
-from .shemas import UserSchema, PaymentSchema, UserUpdateSchema
+from .schemas import UserSchema, PaymentSchema, UserUpdateSchema, PaymentUpdateSchema
 from app.core.models import User, Payment
 
 
@@ -111,6 +111,20 @@ class PaymentCRUD:
             session=session,
         )
         return payment
+
+    @staticmethod
+    @connection
+    async def update_payment(
+        payment_id: int,
+        pay_data: PaymentUpdateSchema,
+        session: AsyncSession,
+    ) -> Payment:
+        pay = await PaymentOrm.update(
+            session=session,
+            pk=payment_id,
+            **pay_data.model_dump(),
+        )
+        return pay
 
     @staticmethod
     @connection
