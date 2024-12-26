@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import date
 
@@ -10,23 +10,31 @@ class PaymentSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PaymentUpdateSchema(PaymentSchema):
+    pay_id: Optional[int] = None
+    user_id: Optional[int] = None
+    is_successful: Optional[bool] = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UserSchema(BaseModel):
     tg_id: int
-    first_name: str | None = None
-    last_name: str | None = None
-    username: str | None = None
+    first_name: str
+    last_name: Optional[str] = None
+    username: Optional[str] = None
     payments: List[PaymentSchema] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class UserUpdateSchema(UserSchema):
-    first_name: str | None = None
-    last_name: str | None = None
-    username: str | None = None
-    expired_at: date | None = None
-    is_active: bool | None = None
-    chat_member: bool | None = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    username: Optional[str] = None
+    expired_at: Optional[date] = None
+    is_active: Optional[bool] = None
+    chat_member: Optional[bool] = None
     payments: List[PaymentSchema] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
