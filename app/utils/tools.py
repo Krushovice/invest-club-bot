@@ -19,9 +19,12 @@ from app.keyboards import build_chat_kb
 
 
 from app.core import User
-from app.core.database import PaymentCRUD, PaymentSchema, UserUpdateSchema
+from app.core.database import (
+    PaymentCRUD,
+    UserUpdateSchema,
+    PaymentUpdateSchema,
+)
 
-from app.payment import parse_user_id_from_order_id
 
 from app.core.logging import setup_logger
 
@@ -49,14 +52,12 @@ async def handle_payment_notification(request, bot: Bot):
         # Извлекаем статус
         status = data["Status"]
         logger.info(f"Обработка платежа со статусом: {status}")
-        count = 0
 
         # Проверка успешного платежа
-        if status == "CONFIRMED" and count == 0:
+        if status == "CONFIRMED":
             # Сохраняем платеж и получаем ID пользователя
             user_id = await save_user_payment(
                 payment_id=data["PaymentId"],
-                order_id=data["OrderId"],
             )
 
             if user_id:
@@ -69,7 +70,7 @@ async def handle_payment_notification(request, bot: Bot):
                         status=404,
                     )
 
-                chat_member = user.chat_member is True
+                chat_member = user.chat_member
                 invite_link = settings.main.channel_link
 
                 if chat_member:
@@ -88,7 +89,7 @@ async def handle_payment_notification(request, bot: Bot):
                         reply_markup=build_chat_kb(invite_link=invite_link),
                     )
 
-                return web.json_response({"status": "ok"})
+                    return web.json_response({"status": "ok"})
             else:
                 logger.warning("Платеж уже обработан")
                 return web.json_response(
@@ -105,15 +106,15 @@ async def handle_payment_notification(request, bot: Bot):
         return web.json_response({"status": "error"}, status=500)
 
 
-async def save_user_payment(payment_id: int, order_id: str):
+async def save_user_payment(payment_id: int):
 
-    existing_payment = await PaymentCRUD.get_payment(payment_id)
+    payment = await PaymentCRUD.get_payment(payment_id)
 
-    if existing_payment:
+    if payment.is_successful:
         return None
 
     else:
-        user_id = parse_user_id_from_order_id(order_id)
+        user_id = payment.user_id
 
         try:
             user = await UserCRUD.get_user(user_id=user_id)
@@ -130,11 +131,13 @@ async def save_user_payment(payment_id: int, order_id: str):
                 user=updated_user,
             )
 
-            pay_in = PaymentSchema(
-                pay_id=payment_id,
-                user_id=user_id,
+            pay_in = PaymentUpdateSchema(
+                is_successful=True,
             )
-            await PaymentCRUD.create_payment(payment=pay_in)
+            await PaymentCRUD.update_payment(
+                payment_id=payment.id,
+                payment=pay_in,
+            )
             return user.id
 
         except SQLAlchemyError as e:
@@ -182,7 +185,7 @@ async def check_user_subs(bot: Bot):
                 await bot.send_photo(
                     chat_id=user.tg_id,
                     photo=FSInputFile(path=ban_image_path),
-                    caption=f"Ваша подписка на канал закончилась {user.expired_at}. "
+                    caption=f"Ваша подписка на канал закончилась. "
                     f"Оплатите пожалуйста доступ <b>/pay</b> 💰",
                 )
             except TelegramBadRequest as e:
@@ -247,7 +250,10 @@ async def get_user_subscribe(user: User):
                     is_active=False,
                     chat_member=False,
                 )
-                await UserCRUD.update_user(user_id=user.id, user=user_in)
+                await UserCRUD.update_user(
+                    user_id=user.id,
+                    user=user_in,
+                )
                 return False
             except SQLAlchemyError as e:
                 logger.error(e)
