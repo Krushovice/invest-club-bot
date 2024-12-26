@@ -12,19 +12,18 @@ settings = Settings()
 logger = setup_logger(__name__)
 
 
-def generate_order_number(user_id: int, max_length: int = 30):
+def generate_order_number(max_length: int = 30):
     # Генерируем UUID (универсальный уникальный идентификатор)
     # Используем только первые 8 символов UUID для краткости
     order_id = uuid.uuid4().hex[:8]
-    order_number = f"{user_id}_{order_id}"
 
     # Проверяем, не превышает ли длина max_length
-    if len(order_number) > max_length:
+    if len(order_id) > max_length:
         # Если превышает, хэшируем длинный идентификатор
-        hash_part = hashlib.sha256(order_number.encode()).hexdigest()[:8]
-        order_number = f"{user_id}_{hash_part}"
+        hash_part = hashlib.sha256(order_id.encode()).hexdigest()[:8]
+        order_id = hash_part
 
-    return order_number
+    return order_id
 
 
 def get_receipt(price):
