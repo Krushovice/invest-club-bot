@@ -7,6 +7,7 @@ from aiogram.exceptions import TelegramBadRequest
 
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, FSInputFile
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.logging import setup_logger
 
@@ -58,7 +59,7 @@ async def command_start_handler(message: Message):
 @router.message(Command("pay", prefix="!/"))
 async def command_pay_handler(message: Message):
     try:
-        user = await UserCRUD.get_user_by_tg_id(message.from_user.id)
+        user = await UserCRUD.get_user_by_tg_id(tg_id=message.from_user.id)
         if not user:
             user = await register_user(message=message)
 
@@ -71,20 +72,26 @@ async def command_pay_handler(message: Message):
 
         if payment:
             new_pay = PaymentSchema(
-                pay_id=payment.id,
+                pay_id=payment["PaymentId"],
                 user_id=user.id,
             )
-            await PaymentCRUD.create_payment(payment=new_pay)
-            msg = markdown.text(
-                markdown.hbold(f"💰 Сумма: 1000 руб"),
-                markdown.hitalic("Для оплаты перейдите по ссылке ниже ⬇️"),
-                sep="\n\n",
-            )
-            await message.answer_photo(
-                photo=FSInputFile(file_path2),
-                caption=msg,
-                reply_markup=pay_kb(payment),
-            )
+            try:
+                pay = await PaymentCRUD.create_payment(payment=new_pay)
+                if pay:
+                    msg = markdown.text(
+                        markdown.hbold(f"💰 Сумма: 1000 руб"),
+                        markdown.hitalic("Для оплаты перейдите по ссылке ниже ⬇️"),
+                        sep="\n\n",
+                    )
+                    await message.answer_photo(
+                        photo=FSInputFile(file_path2),
+                        caption=msg,
+                        reply_markup=pay_kb(payment),
+                    )
+            except SQLAlchemyError as e:
+                logger.error(e)
+            except Exception as e:
+                logger.error(e)
 
     except HttpBadRequest as e:
         logger.error(f"Ошибка http запроса к апи: {e}")
