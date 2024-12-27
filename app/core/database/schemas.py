@@ -10,9 +10,7 @@ class PaymentSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PaymentUpdateSchema(PaymentSchema):
-    pay_id: Optional[int] = None
-    user_id: Optional[int] = None
+class PaymentUpdateSchema(BaseModel):
     is_successful: Optional[bool] = False
 
     model_config = ConfigDict(from_attributes=True)
