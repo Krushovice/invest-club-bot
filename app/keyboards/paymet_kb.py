@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 class PayActions(IntEnum):
     pay = auto()
-    success = auto()
+    help = auto()
     back = auto()
 
 
@@ -26,29 +26,9 @@ def pay_kb(payment: dict) -> InlineKeyboardMarkup:
     )
 
     builder.button(
-        text="Назад🔙",
-        callback_data=(
-            PayCbData(
-                action=PayActions.back,
-            ).pack()
-        ),
+        text="Помощь🆘",
+        callback_data=PayCbData(action=PayActions.help),
     )
-    builder.adjust(1)
-
-    return builder.as_markup()
-
-
-def check_payment_kb(payment: dict) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    builder.button(
-        text="Оплатил? ЖМИ✅",
-        callback_data=PayCbData(
-            action=PayActions.pay,
-            payment_id=payment["PaymentID"],
-        ),
-    )
-
     builder.button(
         text="Назад🔙",
         callback_data=(
