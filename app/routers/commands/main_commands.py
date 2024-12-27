@@ -18,6 +18,7 @@ from app.payment import (
 )
 
 from app.core.database import UserCRUD
+from app.core.config import settings
 
 from app.utils import register_user
 
@@ -101,3 +102,15 @@ async def command_pay_handler(message: Message):
 
     except Exception as e:
         logger.error(e)
+
+
+@router.message(Command("help", prefix="!/"))
+async def command_help_handler(message: Message):
+    msg = (
+        f"Если у вас возникли проблемы с оплатой, доступом к каналу, "
+        f"вы можете описать суть проблемы мне на почту: {settings.main.admin_mail} и мы оперативно вам поможем👍"
+    )
+
+    await message.answer(
+        text=markdown.text(markdown.hbold(msg)),
+    )
