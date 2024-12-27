@@ -57,7 +57,7 @@ async def handle_payment_notification(request, bot: Bot):
         if status == "CONFIRMED":
             # Сохраняем платеж и получаем ID пользователя
             user_id = await save_user_payment(
-                payment_id=data["PaymentId"],
+                payment_id=int(data["PaymentId"]),
             )
 
             if user_id:
@@ -108,43 +108,46 @@ async def handle_payment_notification(request, bot: Bot):
 
 async def save_user_payment(payment_id: int):
 
-    payment = await PaymentCRUD.get_payment(payment_id)
+    payment = await PaymentCRUD.get_payment(payment_id=payment_id)
 
-    if payment.is_successful:
-        return None
+    if payment:
+        if payment.is_successful:
+            return None
 
-    else:
-        user_id = payment.user_id
+        else:
+            user_id = payment.user_id
 
-        try:
-            user = await UserCRUD.get_user(user_id=user_id)
-            today = datetime.date.today()
-            expired_date = today + datetime.timedelta(days=31)
-            updated_user = UserUpdateSchema(
-                tg_id=user.tg_id,
-                is_active=True,
-                chat_member=True,
-                expired_at=expired_date,
-            )
-            await UserCRUD.update_user(
-                user_id=user.id,
-                user=updated_user,
-            )
+            try:
+                user = await UserCRUD.get_user(user_id=user_id)
+                today = datetime.date.today()
+                expired_date = today + datetime.timedelta(days=31)
+                updated_user = UserUpdateSchema(
+                    tg_id=user.tg_id,
+                    is_active=True,
+                    chat_member=True,
+                    expired_at=expired_date,
+                )
+                await UserCRUD.update_user(
+                    user_id=user.id,
+                    user=updated_user,
+                )
 
-            pay_in = PaymentUpdateSchema(
-                is_successful=True,
-            )
-            await PaymentCRUD.update_payment(
-                payment_id=payment.id,
-                payment=pay_in,
-            )
-            return user.id
+                pay_in = PaymentUpdateSchema(
+                    is_successful=True,
+                )
 
-        except SQLAlchemyError as e:
-            logger.error(e)
+                await PaymentCRUD.update_payment(
+                    payment_id=payment.id,
+                    pay_data=pay_in,
+                )
 
-        except Exception as e:
-            logger.error(e)
+                return user.id
+
+            except SQLAlchemyError as e:
+                logger.error(e)
+
+            except Exception as e:
+                logger.error(e)
 
 
 async def register_user(message: Message):
