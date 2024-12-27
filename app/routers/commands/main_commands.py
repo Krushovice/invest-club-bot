@@ -22,7 +22,7 @@ from app.core.database import UserCRUD
 from app.utils import register_user
 
 from app.keyboards import pay_kb
-from core.database import PaymentCRUD, PaymentSchema
+from app.core.database import PaymentCRUD, PaymentSchema
 
 router = Router(name=__name__)
 logger = setup_logger(__name__)
