@@ -67,7 +67,7 @@ class UserCRUD:
         user = await UserOrm.update(
             session=session,
             pk=user_id,
-            **user.model_dump(exclude_none=True),
+            update_data=user,
         )
         return user
 
@@ -122,7 +122,7 @@ class PaymentCRUD:
         pay = await PaymentOrm.update(
             session=session,
             pk=payment_id,
-            **pay_data.model_dump(),
+            update_data=pay_data,
         )
         return pay
 
