@@ -1,11 +1,16 @@
 from typing import List, Any, Dict
 
+from pydantic import BaseModel
 from sqlalchemy import select, Result
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core import User, Payment
+
+from app.core.logging import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class BaseOrm:
@@ -65,19 +70,21 @@ class BaseOrm:
         cls,
         session: AsyncSession,
         pk: int,
-        **kwargs,
+        update_data: BaseModel,
     ):
-
+        # Проверяем, существует ли запись
         query = select(cls.model).filter_by(id=pk)
+        result = await session.execute(query)
+        record = result.scalar_one_or_none()
 
-        result: Result = await session.execute(query)
+        if record is None:
+            raise NoResultFound(f"Запись с id={pk} не найдена")
 
-        record: cls.model | None = result.scalar_one_or_none()
-
-        for key, value in kwargs.items():
+        # Обновляем поля на основе данных из Pydantic-схемы
+        for key, value in update_data.model_dump(exclude_unset=True).items():
             setattr(record, key, value)
 
-        session.add(record)
+        # Коммитим изменения
         await session.commit()
         return record
 
@@ -148,12 +155,22 @@ class PaymentOrm(BaseOrm):
         return payment
 
     @classmethod
-    async def get_payment(cls, session: AsyncSession, payment_id: int) -> Payment:
-        payment = await cls.find_one_or_none(
-            pay_id=payment_id,
-            session=session,
-        )
-        return payment
+    async def get_payment(
+        cls, session: AsyncSession, payment_id: int
+    ) -> Payment | None:
+        try:
+            payment = await cls.find_one_or_none(
+                pay_id=payment_id,
+                session=session,
+            )
+            if payment:
+                return payment
+            else:
+                logger.error(f"Платеж с ID {payment_id} не найден")
+                return None
+
+        except SQLAlchemyError as e:
+            logger.error(f"Ошибка при запросе платежа: {e}")
 
     @classmethod
     async def get_payment_with_related_model(
