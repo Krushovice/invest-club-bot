@@ -26,6 +26,7 @@ class AdminConfig(BaseModel):
     channel_id: int
     debug: bool = True
     channel_link: str
+    admin_email: str
 
 
 class WebConfig(BaseModel):

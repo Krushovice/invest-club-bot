@@ -3,7 +3,7 @@ import functools
 from aiogram import Bot, Dispatcher
 
 from aiogram.client.default import DefaultBotProperties
-
+from aiogram.exceptions import TelegramBadRequest
 
 from aiohttp import web
 from aiogram.webhook.aiohttp_server import (
@@ -52,7 +52,8 @@ async def on_startup() -> None:
             "chat_join_request",
         ],
     )
-    schedule_tasks(bot)
+
+    # schedule_tasks(bot)
 
     # Отправляем сообщение администратору о том, что бот был запущен
     await bot.send_message(
