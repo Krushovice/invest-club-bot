@@ -53,7 +53,7 @@ async def on_startup() -> None:
         ],
     )
 
-    # schedule_tasks(bot)
+    schedule_tasks(bot)
 
     # Отправляем сообщение администратору о том, что бот был запущен
     await bot.send_message(
